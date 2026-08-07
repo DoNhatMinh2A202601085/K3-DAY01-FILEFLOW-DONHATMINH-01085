@@ -51,7 +51,7 @@ def content_filter(response: str) -> dict:
     issues = []
     redacted = response
 
-    # PII patterns to check
+    # PII patterns to check (order matters! longer/more-specific patterns first)
     PII_PATTERNS = {
         # Vietnamese phone: 09xxxxxxxx, 01xxxxxxxxx (10-11 digits starting with 0)
         "phone_vn": r'\b0\d{9,10}\b',
@@ -71,8 +71,8 @@ def content_filter(response: str) -> dict:
         # Generic secrets/tokens
         "secret_token": r'(?:secret|token)\s*[:=]\s*\S+',
 
-        # Database connection strings
-        "db_connection": r'(?:db|database)\s*[:=]\s*[\w.-]+(?::\d+)?(?:/[\w.-]+)?',
+        # Database connection strings (db.host:port format) - check on ORIGINAL text
+        "db_connection": r'\bdb\.[\w.-]+(?::\d+)?(?:/[\w.-]+)?',
 
         # Internal hostnames (*.internal, *.local, etc.)
         "internal_host": r'\b[\w-]+\.(?:internal|local|intranet|private)\b',
@@ -88,19 +88,25 @@ def content_filter(response: str) -> dict:
         "db.vinbank.internal",
     ]
 
+    # Phase 1: Scan all patterns on ORIGINAL text (avoid redaction order issues)
+    # E.g., "db.vinbank.internal" matches both db_connection AND internal_host
+    original = response
     for name, pattern in PII_PATTERNS.items():
-        matches = re.findall(pattern, redacted, re.IGNORECASE)
+        matches = re.findall(pattern, original, re.IGNORECASE)
         if matches:
             issues.append(f"{name}: {len(matches)} found")
-            redacted = re.sub(pattern, "[REDACTED]", redacted, flags=re.IGNORECASE)
+
+    # Phase 2: Redact all matches
+    for name, pattern in PII_PATTERNS.items():
+        redacted = re.sub(pattern, "[REDACTED]", redacted, flags=re.IGNORECASE)
 
     # Check for VinBank specific secrets (case-insensitive)
     for secret in VINBANK_SECRETS:
-        if secret.lower() in redacted.lower():
+        if secret.lower() in original.lower():
             # Create case-insensitive pattern
             escaped = re.escape(secret)
             pattern = re.compile(escaped, re.IGNORECASE)
-            if pattern.search(redacted):
+            if pattern.search(original):
                 issues.append(f"vinbank_secret: '{secret}' found")
                 redacted = pattern.sub("[REDACTED]", redacted)
 

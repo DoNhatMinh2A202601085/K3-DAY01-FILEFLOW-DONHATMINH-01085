@@ -95,9 +95,9 @@ def detect_injection(user_input: str) -> bool:
     # These patterns indicate the user is trying to override system instructions
     DIRECT_OVERRIDE_PATTERNS = [
         # Standard injection phrases (English)
-        r'ignore\s+(all\s+)?(previous|above|prior)\s+instructions?',
-        r'disregard\s+(all\s+)?(previous|above|prior)\s+instructions?',
-        r'forget\s+(all\s+)?(your\s+)?(previous|above|prior)\s+instructions?',
+        r'ignore\s+(all\s+)?(previous|above|prior)\s+(instructions?|directives?)',
+        r'disregard\s+(all\s+)?(previous|above|prior)\s+(instructions?|directives?)',
+        r'forget\s+(all\s+)?(your\s+)?(previous|above|prior)\s+(instructions?|directives?)',
         r'override\s+(your\s+)?system\s+(prompt|instructions?)',
         r'new\s+instructions?[:]',
         r'you\s+are\s+now\s+',
@@ -106,11 +106,18 @@ def detect_injection(user_input: str) -> bool:
         r'you\s+are\s+(a\s+)?jailbroken?\b',
         r'\bdan\b',  # Do Anything Now jailbreak
         r'\bstb\b',  # STB jailbreak variant
+        r'reveal\s+secrets?',
+        r'reveal\s+(the\s+)?(admin\s+)?password',
+        r'show\s+(me\s+)?the\s+(admin\s+)?password',
 
-        # Vietnamese injection patterns
-        r'bỏ\s+qua\s+(mọi|tất\s+cả)\s+hướng\s+dẫn',
+        # Vietnamese injection patterns (with basic diacritics handling)
+        r'bỏ\s+qua',
+        r'bỏ\s+(mọi|tất\s+cả)\s+hướng\s+dẫn',
         r'hãy\s+bỏ\s+qua',
-        r'tiết\s+lộ\s+(mật\s+khẩu|mật\s+khẩu|key|api)',
+        r'tiết\s*lộ',  # tiết lộ or tiết lộ with optional space
+        r'tiet\s+lo',   # tiet lo (without diacritics)
+        r'tiết\s*lộ\s+(mật\s*khẩu|mật\s*khẩu|key|api)',
+        r'tiet\s*lo\s+(mat|mat\s*khau|khau|key|api)',
         r'cho\s+tôi\s+xem\s+system\s+prompt',
 
         # Reveal/system extraction patterns

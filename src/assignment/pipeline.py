@@ -13,8 +13,17 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+import sys
 from pathlib import Path
 from urllib.parse import urlparse
+
+# Force UTF-8 output to handle Vietnamese characters on Windows
+if sys.platform.startswith('win'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except (AttributeError, OSError):
+        pass
 
 from assignment.rate_limiter import RateLimitPlugin
 from assignment.audit_log import AuditLogPlugin
@@ -238,8 +247,9 @@ def run_test_2_attack_queries(audit: AuditLogPlugin, monitor: MonitoringAlert) -
     return results
 
 
-def run_test_3_rate_limit(audit: AuditLogPlugin, monitor: MonitoringAlert) -> dict:
+async def run_test_3_rate_limit(audit: AuditLogPlugin, monitor: MonitoringAlert) -> dict:
     """Test 3: Rate limiting - 15 requests, ~10 should pass, rest blocked."""
+    import asyncio
     rate_limiter = RateLimitPlugin(max_requests=10, window_seconds=60)
 
     sent = 15
@@ -248,9 +258,8 @@ def run_test_3_rate_limit(audit: AuditLogPlugin, monitor: MonitoringAlert) -> di
 
     for i in range(sent):
         query = f"Test query number {i + 1}"
-        # Simulate rate limiter check
-        # Note: In real test, this would be async callback
-        result = rate_limiter.on_user_message_callback(
+        # Properly await the async callback
+        result = await rate_limiter.on_user_message_callback(
             invocation_context=type('obj', (object,), {'user_id': 'rate_test_user'})(),
             user_message=type('obj', (object,), {'parts': [{'text': query}]})()
         )
@@ -355,7 +364,7 @@ async def run_assignment_suite(pipeline, student_id: str) -> dict:
         print(f"  {'[BLOCKED]' if r['blocked'] else '[ISSUE!]'} {r['input'][:50]}...")
 
     print("\n--- Test 3: Rate Limit ---")
-    rate_limit = run_test_3_rate_limit(audit, monitor)
+    rate_limit = await run_test_3_rate_limit(audit, monitor)
     print(f"  Sent: {rate_limit['sent']}, Passed: {rate_limit['passed']}, Blocked: {rate_limit['blocked']}")
 
     print("\n--- Test 4: Edge Cases ---")
@@ -383,8 +392,9 @@ async def run_assignment_suite(pipeline, student_id: str) -> dict:
     }
 
     # Write outputs
-    output_dir = Path("outputs")
-    output_dir.mkdir(exist_ok=True)
+    # Write to repo-root outputs/ (parent of src/)
+    output_dir = Path(__file__).resolve().parents[2] / "outputs"
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     # Write results.json
     results_path = output_dir / "results.json"
