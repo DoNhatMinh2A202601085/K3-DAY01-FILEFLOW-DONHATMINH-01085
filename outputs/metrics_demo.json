@@ -1,0 +1,23 @@
+{
+  "total_requests": 25,
+  "blocked_requests": 0,
+  "block_rate": 0.0,
+  "rate_limit_hits": 10,
+  "judge_checks": 50,
+  "judge_fails": 20,
+  "judge_fail_rate": 0.4,
+  "alerts": [
+    {
+      "metric": "rate_limit_hits",
+      "value": 10.0,
+      "threshold": 5.0,
+      "message": "Rate limit hits 10 exceeds threshold 5"
+    },
+    {
+      "metric": "judge_fail_rate",
+      "value": 0.4,
+      "threshold": 0.3,
+      "message": "Judge fail rate 40.0% exceeds threshold 30.0%"
+    }
+  ]
+}
